@@ -40,52 +40,10 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class fannkuch {
-    private static final int NCHUNKS = 240;
-    private static       int CHUNKSZ;
-    private static       int NTASKS;
-    private static int n;
-    private static int[] Fact;
-    private static int[] maxFlips;
-    private static int[] chkSums;
-    private static AtomicInteger taskId;
-
-    static {
-        // Inititalize
-        n = 12;
-
-        Fact = new int[n+1];
-        Fact[0] = 1;
-        for ( int i=1; i<Fact.length; ++i ) {
-            Fact[i] = Fact[i-1] * i;
-        }
-
-        CHUNKSZ = (Fact[n] + NCHUNKS - 1) / NCHUNKS;
-        NTASKS = (Fact[n] + CHUNKSZ - 1) / CHUNKSZ;
-        maxFlips = new int[NTASKS];
-        chkSums  = new int[NTASKS];
-        taskId = new AtomicInteger(0);
-    }
-
-    static void printResult( int n, int res, int chk )
-    {
-        System.out.println(chk + "\nPfannkuchen(" + n + ") = " + res);
-    }
 
     @Benchmark
-    public void fannkuch() {
-        new fannkuchredux().run();
-
-        // Reduce the results
-        int res = 0;
-        for ( int v : maxFlips ) {
-            res = Math.max( res, v );
-        }
-        int chk = 0;
-        for ( int v : chkSums ) {
-            chk += v;
-        }
-
-        printResult(n, res, chk);
+    public int fannkuch() {
+        return new fannkuchredux().run();
     }
 
     public static void main(String[] args) throws RunnerException {
@@ -99,12 +57,36 @@ public class fannkuch {
         new Runner(opt).run();
     }
 
-    public final class fannkuchredux implements Runnable
+    public final class fannkuchredux
     {
+        private final int NCHUNKS = 240;
+        private int CHUNKSZ;
+        private int NTASKS;
+        private int n;
+        private int[] Fact;
+        private int[] maxFlips;
+        private int[] chkSums;
+        private AtomicInteger taskId;
+
         int[] p, pp, count;
 
         public fannkuchredux()
         {
+            // Inititalize
+            n = 12;
+
+            Fact = new int[n+1];
+            Fact[0] = 1;
+            for ( int i=1; i<Fact.length; ++i ) {
+                Fact[i] = Fact[i-1] * i;
+            }
+
+            CHUNKSZ = (Fact[n] + NCHUNKS - 1) / NCHUNKS;
+            NTASKS = (Fact[n] + CHUNKSZ - 1) / CHUNKSZ;
+            maxFlips = new int[NTASKS];
+            chkSums  = new int[NTASKS];
+            taskId = new AtomicInteger(0);
+
             p     = new int[n];
             pp    = new int[n];
             count = new int[n+1];
@@ -236,12 +218,24 @@ public class fannkuch {
             chkSums[task]  = chksum;
         }
 
-        public void run()
+        public int run()
         {
             int task;
             while ( ( task = taskId.getAndIncrement() ) < NTASKS ) {
                 runTask( task );
             }
+
+            // Reduce the results
+            int res = 0;
+            for ( int v : maxFlips ) {
+                res = Math.max( res, v );
+            }
+            int chk = 0;
+            for ( int v : chkSums ) {
+                chk += v;
+            }
+
+            return res + chk;
         }
     }
 
